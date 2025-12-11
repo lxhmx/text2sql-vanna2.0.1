@@ -138,14 +138,17 @@ def run_agent(question: str, session_id: str = None) -> str:
 
 def run_agent_stream(question: str, session_id: str = None) -> Generator[str, None, None]:
     """
-    运行 Agent 处理用户问题（流式输出）
+    运行 Agent 处理用户问题（模拟流式输出）
+    
+    注意：由于 langgraph 的 stream 在 Flask 同步环境中有异步冲突问题，
+    这里改用 invoke 获取完整结果，然后逐字符 yield 模拟流式效果。
     
     Args:
         question: 用户问题
         session_id: 会话 ID
     
     Yields:
-        str: 每个 token
+        str: 每个字符
     """
     agent = get_agent_graph()
     
@@ -155,18 +158,23 @@ def run_agent_stream(question: str, session_id: str = None) -> Generator[str, No
         messages.extend(get_chat_history(session_id))
     messages.append(HumanMessage(content=question))
     
-    full_output = ""
+    # 使用 invoke 获取完整结果
+    result = agent.invoke({"messages": messages})
     
-    # 流式调用 Agent
-    for event in agent.stream({"messages": messages}, stream_mode="messages"):
-        # event 是 (message, metadata) 元组
-        if isinstance(event, tuple) and len(event) >= 1:
-            msg = event[0]
-            # 只输出 AI 消息的内容
-            if isinstance(msg, AIMessage) and msg.content:
-                full_output += msg.content
-                yield msg.content
+    # 提取最后一条 AI 消息
+    output = ""
+    for msg in reversed(result.get("messages", [])):
+        if isinstance(msg, AIMessage) and msg.content:
+            output = msg.content
+            break
+    
+    if not output:
+        output = "抱歉，我无法处理您的问题。"
     
     # 保存到历史
-    if session_id and full_output:
-        add_to_history(session_id, question, full_output)
+    if session_id:
+        add_to_history(session_id, question, output)
+    
+    # 逐字符 yield 模拟流式输出
+    for char in output:
+        yield char

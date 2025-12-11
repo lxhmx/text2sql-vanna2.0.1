@@ -168,31 +168,33 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 <template>
   <div class="chat-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">智能问答</h1>
-        <p class="page-subtitle">与知识库进行对话式交互</p>
+    <!-- 消息区域 -->
+    <div class="messages-area" ref="chatContainer">
+      <!-- 欢迎区域（无消息时显示） -->
+      <div v-if="messages.length <= 1" class="welcome-section">
+        <div class="welcome-icon">
+          <el-icon :size="48"><ChatDotRound /></el-icon>
+        </div>
+        <h2 class="welcome-title">智能数据助手</h2>
+        <p class="welcome-desc">我可以帮您查询数据、分析报表、回答问题</p>
+        <div class="quick-actions">
+          <div class="quick-item" @click="inputText = '查询所有设备信息'">
+            <el-icon><Search /></el-icon>
+            <span>查询设备信息</span>
+          </div>
+          <div class="quick-item" @click="inputText = '统计各类型设备数量'">
+            <el-icon><DataAnalysis /></el-icon>
+            <span>统计设备数量</span>
+          </div>
+          <div class="quick-item" @click="inputText = '数据库有哪些表'">
+            <el-icon><Grid /></el-icon>
+            <span>查看数据库结构</span>
+          </div>
+        </div>
       </div>
-      <div class="mode-switch">
-        <span class="mode-label">{{ useAgentMode ? 'Agent 模式' : '普通模式' }}</span>
-        <el-switch 
-          v-model="useAgentMode" 
-          active-text="智能"
-          inactive-text="普通"
-          :active-color="'#7c3aed'"
-        />
-        <el-tooltip 
-          :content="useAgentMode ? 'Agent 模式：AI 自动决定是否查询数据库' : '普通模式：固定流程，每次都查询数据库并返回表格'"
-          placement="bottom"
-        >
-          <el-icon class="mode-help"><QuestionFilled /></el-icon>
-        </el-tooltip>
-      </div>
-    </div>
-    
-    <div class="chat-container">
+      
       <!-- 消息列表 -->
-      <div class="messages-wrapper" ref="chatContainer">
+      <div v-else class="messages-list">
         <div 
           v-for="msg in messages" 
           :key="msg.id" 
@@ -200,10 +202,10 @@ const handleKeydown = (e: KeyboardEvent) => {
           :class="msg.role"
         >
           <div class="message-avatar">
-            <el-icon v-if="msg.role === 'assistant'" :size="20" color="#fff">
+            <el-icon v-if="msg.role === 'assistant'" :size="18" color="#fff">
               <ChatDotRound />
             </el-icon>
-            <el-icon v-else :size="20" color="#fff">
+            <el-icon v-else :size="18" color="#fff">
               <User />
             </el-icon>
           </div>
@@ -246,7 +248,7 @@ const handleKeydown = (e: KeyboardEvent) => {
         <!-- 加载中 -->
         <div v-if="loading" class="message-item assistant">
           <div class="message-avatar">
-            <el-icon :size="20" color="#fff"><ChatDotRound /></el-icon>
+            <el-icon :size="18" color="#fff"><ChatDotRound /></el-icon>
           </div>
           <div class="message-content">
             <div class="message-bubble loading">
@@ -257,28 +259,53 @@ const handleKeydown = (e: KeyboardEvent) => {
           </div>
         </div>
       </div>
-      
-      <!-- 输入区域 -->
-      <div class="input-wrapper">
-        <el-input
-          v-model="inputText"
-          placeholder="输入您的问题... (按 Enter 发送)"
-          :disabled="loading"
-          @keydown="handleKeydown"
-        />
-        <el-button 
-          type="primary" 
-          class="send-btn"
-          :loading="loading"
-          @click="sendMessage"
-        >
-          <el-icon><Promotion /></el-icon>
-          发送
-        </el-button>
-      </div>
-      
-      <div class="input-hint">
-        提示：尝试问 "显示销售数据图表" 或 "查询员工业绩数据"
+    </div>
+    
+    <!-- 底部输入卡片 -->
+    <div class="input-card">
+      <div class="input-card-inner">
+        <!-- 输入框区域 -->
+        <div class="input-row">
+          <div class="input-field">
+            <el-icon class="input-icon"><EditPen /></el-icon>
+            <input
+              v-model="inputText"
+              type="text"
+              placeholder="输入您的问题，按 Enter 发送..."
+              :disabled="loading"
+              @keydown="handleKeydown"
+            />
+          </div>
+          <button 
+            class="send-button"
+            :class="{ loading: loading }"
+            :disabled="loading || !inputText.trim()"
+            @click="sendMessage"
+          >
+            <el-icon v-if="!loading"><Promotion /></el-icon>
+            <el-icon v-else class="is-loading"><Loading /></el-icon>
+          </button>
+        </div>
+        
+        <!-- 底部工具栏 -->
+        <div class="input-toolbar">
+          <div class="mode-toggle" @click="useAgentMode = !useAgentMode">
+            <div class="mode-indicator" :class="{ active: useAgentMode }">
+              <el-icon><MagicStick /></el-icon>
+            </div>
+            <span class="mode-text">{{ useAgentMode ? 'Agent 智能模式' : '普通查询模式' }}</span>
+            <el-tooltip 
+              :content="useAgentMode ? 'AI 自动决定是否需要查询数据库' : '每次都执行数据库查询并返回表格'"
+              placement="top"
+            >
+              <el-icon class="mode-help"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
+          <div class="toolbar-hint">
+            <el-icon><InfoFilled /></el-icon>
+            <span>支持自然语言查询数据</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -289,74 +316,119 @@ const handleKeydown = (e: KeyboardEvent) => {
   height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
+  background: linear-gradient(135deg, #f8f7ff 0%, #f0f9ff 50%, #f0fdf4 100%);
+  position: relative;
 }
 
-.page-header {
+// ========== 消息区域 ==========
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 24px 140px;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(124, 58, 237, 0.2);
+    border-radius: 3px;
+  }
+}
+
+// ========== 欢迎区域 ==========
+.welcome-section {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  animation: fadeIn 0.6s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.welcome-icon {
+  width: 100px;
+  height: 100px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #7c3aed 0%, #10b981 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
   margin-bottom: 24px;
+  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.25);
 }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #7c3aed;
-  margin-bottom: 8px;
+.welcome-title {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c3aed 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
 }
 
-.page-subtitle {
-  font-size: 14px;
+.welcome-desc {
+  font-size: 15px;
   color: #666;
-  margin-bottom: 0;
+  margin-bottom: 32px;
 }
 
-.mode-switch {
+.quick-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.quick-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #f5f3ff;
-  border-radius: 20px;
+  padding: 12px 20px;
+  background: #fff;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid transparent;
   
-  .mode-label {
-    font-size: 13px;
-    font-weight: 500;
+  .el-icon {
     color: #7c3aed;
   }
   
-  .mode-help {
-    color: #999;
-    cursor: help;
-    font-size: 16px;
-    
-    &:hover {
-      color: #7c3aed;
-    }
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.15);
+    border-color: rgba(124, 58, 237, 0.2);
   }
 }
 
-.chat-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-}
-
-.messages-wrapper {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
-  background: linear-gradient(180deg, #f5f3ff 0%, #fff 100%);
+// ========== 消息列表 ==========
+.messages-list {
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .message-item {
   display: flex;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  animation: slideIn 0.3s ease;
+  
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   
   &.user {
     flex-direction: row-reverse;
@@ -368,6 +440,7 @@ const handleKeydown = (e: KeyboardEvent) => {
     .message-bubble {
       background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
       color: #fff;
+      border-radius: 18px 18px 4px 18px;
     }
     
     .message-content {
@@ -383,42 +456,43 @@ const handleKeydown = (e: KeyboardEvent) => {
     .message-bubble {
       background: #fff;
       color: #333;
-      border: 1px solid #f0f0f0;
+      border-radius: 18px 18px 18px 4px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     }
   }
 }
 
 .message-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .message-content {
   display: flex;
   flex-direction: column;
-  max-width: 70%;
+  max-width: 75%;
 }
 
 .message-bubble {
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 14px 18px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   
   &.loading {
     display: flex;
-    gap: 4px;
-    padding: 16px 20px;
+    gap: 6px;
+    padding: 18px 24px;
     
     .dot {
       width: 8px;
       height: 8px;
-      background: #7c3aed;
+      background: linear-gradient(135deg, #7c3aed 0%, #10b981 100%);
       border-radius: 50%;
       animation: bounce 1.4s infinite ease-in-out both;
       
@@ -434,94 +508,209 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 .message-time {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 6px;
 }
 
-.sql-block {
-  margin-top: 12px;
-  background: #1e1e1e;
-  border-radius: 8px;
-  overflow: hidden;
-  
-  .sql-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    background: #2d2d2d;
-    color: #999;
-    font-size: 12px;
-  }
-  
-  .sql-code {
-    padding: 12px;
-    margin: 0;
-    color: #9cdcfe;
-    font-family: 'Consolas', monospace;
-    font-size: 13px;
-    overflow-x: auto;
-  }
-}
-
+// ========== 结果表格 ==========
 .result-table {
   margin-top: 12px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
+  background: #fff;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   
   .table-header {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 12px;
-    background: #f9f9f9;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #f8f7ff 0%, #f0fdf4 100%);
     color: #666;
     font-size: 12px;
+    font-weight: 500;
   }
   
   .table-more {
-    padding: 8px 12px;
+    padding: 10px 14px;
     text-align: center;
     font-size: 12px;
     color: #999;
-    background: #f9f9f9;
+    background: #fafafa;
   }
 }
 
-.input-wrapper {
+// ========== 底部输入卡片 ==========
+.input-card {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 24px 24px;
+  background: linear-gradient(to top, rgba(248, 247, 255, 1) 0%, rgba(248, 247, 255, 0) 100%);
+}
+
+.input-card-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 16px 20px;
+  box-shadow: 
+    0 4px 24px rgba(124, 58, 237, 0.1),
+    0 8px 48px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+.input-row {
   display: flex;
   gap: 12px;
-  padding: 16px 24px;
-  border-top: 1px solid #f0f0f0;
+  align-items: center;
+}
+
+.input-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: #f8f7ff;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
   
-  .el-input {
+  &:focus-within {
+    background: #fff;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+  }
+  
+  .input-icon {
+    color: #999;
+    font-size: 18px;
+  }
+  
+  input {
     flex: 1;
+    height: 48px;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    color: #333;
+    outline: none;
     
-    :deep(.el-input__wrapper) {
-      border-radius: 24px;
-      padding: 8px 20px;
+    &::placeholder {
+      color: #aaa;
+    }
+    
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+}
+
+.send-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed 0%, #10b981 100%);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+  }
+  
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  &.loading {
+    background: #e5e7eb;
+  }
+}
+
+.input-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #f8f7ff;
+  }
+  
+  .mode-indicator {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transition: all 0.3s ease;
+    
+    &.active {
+      background: linear-gradient(135deg, #7c3aed 0%, #10b981 100%);
+      color: #fff;
     }
   }
   
-  .send-btn {
-    height: 44px;
-    padding: 0 24px;
-    border-radius: 22px;
-    background: linear-gradient(135deg, #7c3aed 0%, #10b981 100%);
-    border: none;
+  .mode-text {
+    font-size: 13px;
+    color: #666;
+    font-weight: 500;
+  }
+  
+  .mode-help {
+    color: #bbb;
+    font-size: 14px;
+    
+    &:hover {
+      color: #7c3aed;
+    }
   }
 }
 
-.input-hint {
-  padding: 0 24px 16px;
+.toolbar-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
-  color: #999;
-  text-align: center;
+  color: #aaa;
+  
+  .el-icon {
+    font-size: 14px;
+  }
 }
 
-// 流式输出光标闪烁效果
+// ========== 光标闪烁 ==========
 .cursor {
   display: inline-block;
   animation: blink 1s infinite;
