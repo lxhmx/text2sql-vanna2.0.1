@@ -5,19 +5,19 @@ LangChain Agent
 
 import sys
 from pathlib import Path
-from typing import Generator
+from typing import AsyncGenerator
 from datetime import datetime
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 # 添加项目根目录到路径
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import API_KEY, VANNA_MODEL, VANNA_API_BASE
-from common.langchain_tools import ALL_TOOLS
+from common.tools import ALL_TOOLS
 
 # Agent 实例缓存
 _agent_graph = None
@@ -49,7 +49,7 @@ AGENT_SYSTEM_PROMPT = """你是一个智能数据分析助手，可以帮助用�
 def get_agent_graph():
     """
     获取 Agent Graph（单例）
-    使用 langgraph 的 create_react_agent
+    使用 langchain.agents.create_agent（LangGraph v1 推荐方式）
     """
     global _agent_graph
     
@@ -62,11 +62,11 @@ def get_agent_graph():
             streaming=True,
         )
         
-        # 使用 langgraph 创建 ReAct Agent
-        _agent_graph = create_react_agent(
-            model=llm,
+        # 使用 langchain.agents.create_agent 创建 Agent（LangGraph v1 推荐）
+        _agent_graph = create_agent(
+            llm,
             tools=ALL_TOOLS,
-            prompt=AGENT_SYSTEM_PROMPT,  # 系统提示词
+            system_prompt=AGENT_SYSTEM_PROMPT,
         )
     
     return _agent_graph
@@ -136,19 +136,19 @@ def run_agent(question: str, session_id: str = None) -> str:
     return output
 
 
-def run_agent_stream(question: str, session_id: str = None) -> Generator[str, None, None]:
+async def run_agent_stream_async(question: str, session_id: str = None) -> AsyncGenerator[str, None]:
     """
-    运行 Agent 处理用户问题（模拟流式输出）
+    运行 Agent 处理用户问题（真正的异步流式输出）
     
-    注意：由于 langgraph 的 stream 在 Flask 同步环境中有异步冲突问题，
-    这里改用 invoke 获取完整结果，然后逐字符 yield 模拟流式效果。
+    使用 langgraph 的 astream_events 实现真正的流式输出，
+    适用于 FastAPI 等异步框架。
     
     Args:
         question: 用户问题
         session_id: 会话 ID
     
     Yields:
-        str: 每个字符
+        str: 流式输出的文本片段
     """
     agent = get_agent_graph()
     
@@ -158,23 +158,34 @@ def run_agent_stream(question: str, session_id: str = None) -> Generator[str, No
         messages.extend(get_chat_history(session_id))
     messages.append(HumanMessage(content=question))
     
-    # 使用 invoke 获取完整结果
-    result = agent.invoke({"messages": messages})
+    # 收集完整输出用于保存历史
+    full_output = ""
     
-    # 提取最后一条 AI 消息
-    output = ""
-    for msg in reversed(result.get("messages", [])):
-        if isinstance(msg, AIMessage) and msg.content:
-            output = msg.content
-            break
-    
-    if not output:
-        output = "抱歉，我无法处理您的问题。"
-    
-    # 保存到历史
-    if session_id:
-        add_to_history(session_id, question, output)
-    
-    # 逐字符 yield 模拟流式输出
-    for char in output:
-        yield char
+    try:
+        # 使用 astream_events 实现真正的流式输出
+        async for event in agent.astream_events(
+            {"messages": messages},
+            version="v2"
+        ):
+            # 只处理 LLM 流式输出事件
+            if event["event"] == "on_chat_model_stream":
+                chunk = event["data"]["chunk"]
+                if hasattr(chunk, 'content') and chunk.content:
+                    full_output += chunk.content
+                    yield chunk.content
+        
+        # 如果没有输出，返回默认消息
+        if not full_output:
+            full_output = "抱歉，我无法处理您的问题。"
+            yield full_output
+        
+        # 保存到历史
+        if session_id:
+            add_to_history(session_id, question, full_output)
+            
+    except Exception as e:
+        print(f"[Agent Async] 流式处理异常: {e}")
+        error_msg = "抱歉，处理您的问题时出现错误。"
+        yield error_msg
+        if session_id:
+            add_to_history(session_id, question, error_msg)

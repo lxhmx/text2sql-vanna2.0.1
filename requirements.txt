@@ -1,5 +1,8 @@
 # Web 框架
 Flask>=2.3.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
 
 # Vanna Text2SQL
 vanna>=0.5.0

@@ -1,24 +1,27 @@
 """
-数据管理 API
+数据管理 API (FastAPI 版本)
 提供训练文件的统计、列表、删除等功能
-所有数据管理相关的接口都在这里
 """
 import sys
+import os
 import hashlib
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
-from flask import Flask, request, jsonify
+from fastapi import APIRouter, Query, HTTPException
+from pydantic import BaseModel
+import mysql.connector
+from mysql.connector import Error
 
 # 添加项目根目录到路径
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import DB_CONFIG
-import mysql.connector
-from mysql.connector import Error
 
+
+# ==================== 数据库工具函数 ====================
 
 def get_db_connection():
     """获取数据库连接"""
@@ -139,15 +142,7 @@ def update_training_status(
     train_result: str = None,
     train_count: int = None
 ) -> bool:
-    """
-    更新训练状态
-    
-    Args:
-        file_id: 文件记录ID
-        train_status: 训练状态 (pending/training/success/failed)
-        train_result: 训练结果描述
-        train_count: 训练生成的知识条目数
-    """
+    """更新训练状态"""
     conn = get_db_connection()
     if not conn:
         return False
@@ -181,31 +176,25 @@ def update_training_status(
         cursor.close()
         conn.close()
 
-
-def get_data_manage_functions():
-    """
-    获取数据管理函数（用于延迟导入，避免循环依赖）
-    
-    Returns:
-        dict: 包含 insert_training_file, update_training_status, calculate_file_hash 函数
-    """
-    return {
-        'insert_training_file': insert_training_file,
-        'update_training_status': update_training_status,
-        'calculate_file_hash': calculate_file_hash
-    }
+# 创建路由器
+router = APIRouter(prefix="/api/data-manage", tags=["数据管理"])
 
 
-# ==================== API 接口 ====================
+# ==================== Pydantic 模型 ====================
 
-def get_training_stats_api():
-    """
-    获取训练数据统计
-    GET /api/data-manage/stats
-    """
+class DeleteFilesRequest(BaseModel):
+    ids: Optional[List[int]] = None
+    delete_all: bool = False
+
+
+# ==================== 接口 ====================
+
+@router.get("/stats")
+async def get_training_stats():
+    """获取训练数据统计"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({"success": False, "message": "数据库连接失败"}), 500
+        raise HTTPException(status_code=500, detail="数据库连接失败")
     
     try:
         cursor = conn.cursor(dictionary=True)
@@ -225,7 +214,6 @@ def get_training_stats_api():
         cursor.execute(sql)
         result = cursor.fetchone()
         
-        # 按文件类型统计
         cursor.execute("""
             SELECT file_type, COUNT(*) as count 
             FROM training_files 
@@ -233,7 +221,7 @@ def get_training_stats_api():
         """)
         type_stats = {row['file_type']: row['count'] for row in cursor.fetchall()}
         
-        return jsonify({
+        return {
             "success": True,
             "stats": {
                 "total_files": result['total_files'] or 0,
@@ -246,26 +234,22 @@ def get_training_stats_api():
                 "total_file_size": int(result['total_file_size'] or 0),
                 "by_type": type_stats
             }
-        })
+        }
         
     except Error as e:
         print(f"[DataManage] 获取统计失败: {e}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conn.close()
 
 
-def get_training_activity_api():
-    """
-    获取训练活跃度（近N天每天的上传数量）
-    GET /api/data-manage/activity?days=7
-    """
-    days = request.args.get('days', 7, type=int)
-    
+@router.get("/activity")
+async def get_training_activity(days: int = Query(7, ge=1, le=365)):
+    """获取训练活跃度"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({"success": False, "message": "数据库连接失败"}), 500
+        raise HTTPException(status_code=500, detail="数据库连接失败")
     
     try:
         cursor = conn.cursor(dictionary=True)
@@ -283,7 +267,6 @@ def get_training_activity_api():
         cursor.execute(sql, (days,))
         results = cursor.fetchall()
         
-        # 转换日期格式
         data = []
         for row in results:
             data.append({
@@ -292,39 +275,33 @@ def get_training_activity_api():
                 "train_items": int(row['train_items'])
             })
         
-        return jsonify({
-            "success": True,
-            "data": data
-        })
+        return {"success": True, "data": data}
         
     except Error as e:
         print(f"[DataManage] 获取活跃度失败: {e}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conn.close()
 
 
-def get_training_files_api():
-    """
-    获取训练文件列表
-    GET /api/data-manage/files?page=1&page_size=20&train_type=sql&keyword=xxx
-    """
-    page = request.args.get('page', 1, type=int)
-    page_size = request.args.get('page_size', 20, type=int)
-    train_type = request.args.get('train_type', '')
-    file_type = request.args.get('file_type', '')
-    train_status = request.args.get('train_status', '')
-    keyword = request.args.get('keyword', '')
-    
+@router.get("/files")
+async def get_training_files(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    train_type: str = Query(""),
+    file_type: str = Query(""),
+    train_status: str = Query(""),
+    keyword: str = Query("")
+):
+    """获取训练文件列表"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({"success": False, "message": "数据库连接失败"}), 500
+        raise HTTPException(status_code=500, detail="数据库连接失败")
     
     try:
         cursor = conn.cursor(dictionary=True)
         
-        # 构建查询条件
         conditions = []
         params = []
         
@@ -371,7 +348,7 @@ def get_training_files_api():
             if row.get('updated_at'):
                 row['updated_at'] = row['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
         
-        return jsonify({
+        return {
             "success": True,
             "data": data,
             "pagination": {
@@ -380,66 +357,50 @@ def get_training_files_api():
                 "total": total,
                 "total_pages": (total + page_size - 1) // page_size
             }
-        })
+        }
         
     except Error as e:
         print(f"[DataManage] 查询失败: {e}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conn.close()
 
 
-def delete_training_file_api():
-    """
-    删除训练文件记录（完整删除流程）
-    DELETE /api/data-manage/files
-    Body: { "ids": [1, 2, 3] } 或 { "delete_all": true }
-    
-    删除流程：
-    1. 从向量数据库删除训练数据（使用 file_hash 匹配）
-    2. 删除本地文件
-    3. 删除数据库记录
-    """
-    import os
-    
-    data = request.get_json() or {}
-    ids = data.get('ids', [])
-    delete_all = data.get('delete_all', False)
-    
+@router.delete("/files")
+async def delete_training_files(req: DeleteFilesRequest):
+    """删除训练文件记录"""
     conn = get_db_connection()
     if not conn:
-        return jsonify({"success": False, "message": "数据库连接失败"}), 500
+        raise HTTPException(status_code=500, detail="数据库连接失败")
     
     try:
         cursor = conn.cursor(dictionary=True)
         
-        # 1. 先查询要删除的记录，获取文件路径和文件哈希
-        if delete_all:
+        # 查询要删除的记录
+        if req.delete_all:
             cursor.execute("SELECT id, file_name, file_path, file_hash, train_type FROM training_files")
-        elif ids:
-            placeholders = ','.join(['%s'] * len(ids))
-            cursor.execute(f"SELECT id, file_name, file_path, file_hash, train_type FROM training_files WHERE id IN ({placeholders})", ids)
+        elif req.ids:
+            placeholders = ','.join(['%s'] * len(req.ids))
+            cursor.execute(f"SELECT id, file_name, file_path, file_hash, train_type FROM training_files WHERE id IN ({placeholders})", req.ids)
         else:
-            return jsonify({"success": False, "message": "请指定要删除的记录"}), 400
+            raise HTTPException(status_code=400, detail="请指定要删除的记录")
         
         records = cursor.fetchall()
         
         if not records:
-            return jsonify({"success": False, "message": "未找到要删除的记录"}), 404
+            raise HTTPException(status_code=404, detail="未找到要删除的记录")
         
-        # 统计
         deleted_db_count = 0
         deleted_file_count = 0
         deleted_vector_count = 0
         errors = []
         
-        # 2. 删除向量数据库中的数据（使用 file_hash 匹配）
+        # 删除向量数据库中的数据
         try:
-            from api.train_sql_api import get_vanna_instance
+            from common.vanna_instance import get_vanna_instance
             vn = get_vanna_instance()
             
-            # 获取所有训练数据（只查询一次）
             training_data = vn.get_training_data()
             if hasattr(training_data, 'to_dict'):
                 all_data = training_data.to_dict('records')
@@ -454,11 +415,9 @@ def delete_training_file_api():
                 train_type = record.get('train_type')
                 
                 if file_hash and file_name:
-                    # 构建 file_id（与训练时一致）
                     prefix = 'sql' if train_type == 'sql' else 'doc'
                     file_id = f"{prefix}_{file_name}_{file_hash[:8]}"
                     
-                    # 查找并删除匹配的向量数据
                     for item in all_data:
                         content = item.get('content', '') or ''
                         if file_id in str(content):
@@ -467,37 +426,37 @@ def delete_training_file_api():
                                 try:
                                     vn.remove_training_data(id=item_id)
                                     deleted_vector_count += 1
-                                    print(f"[DataManage] 删除向量数据: {item_id} (file_id={file_id})")
                                 except Exception as ve:
                                     errors.append(f"删除向量 {item_id} 失败: {str(ve)}")
                         
         except Exception as e:
             errors.append(f"获取 Vanna 实例失败: {str(e)}")
         
-        # 3. 删除本地文件
+        # 删除本地文件
         for record in records:
             file_path = record.get('file_path')
-            if file_path and os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                    deleted_file_count += 1
-                    print(f"[DataManage] 删除文件: {file_path}")
-                except Exception as fe:
-                    errors.append(f"删除文件 {file_path} 失败: {str(fe)}")
+            if file_path:
+                full_path = PROJECT_ROOT / file_path
+                if full_path.exists():
+                    try:
+                        os.remove(full_path)
+                        deleted_file_count += 1
+                    except Exception as fe:
+                        errors.append(f"删除文件 {file_path} 失败: {str(fe)}")
         
-        # 4. 删除数据库记录
+        # 删除数据库记录
         cursor_del = conn.cursor()
-        if delete_all:
+        if req.delete_all:
             cursor_del.execute("DELETE FROM training_files")
         else:
-            placeholders = ','.join(['%s'] * len(ids))
-            cursor_del.execute(f"DELETE FROM training_files WHERE id IN ({placeholders})", ids)
+            placeholders = ','.join(['%s'] * len(req.ids))
+            cursor_del.execute(f"DELETE FROM training_files WHERE id IN ({placeholders})", req.ids)
         
         conn.commit()
         deleted_db_count = cursor_del.rowcount
         cursor_del.close()
         
-        return jsonify({
+        return {
             "success": True,
             "message": f"删除完成：数据库 {deleted_db_count} 条，文件 {deleted_file_count} 个，向量 {deleted_vector_count} 条",
             "deleted_count": deleted_db_count,
@@ -507,43 +466,13 @@ def delete_training_file_api():
                 "vectors": deleted_vector_count
             },
             "errors": errors if errors else None
-        })
+        }
         
+    except HTTPException:
+        raise
     except Error as e:
         print(f"[DataManage] 删除失败: {e}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conn.close()
-
-
-def register_routes(app):
-    """注册路由到 Flask app"""
-    # 统计接口
-    app.route('/api/data-manage/stats', methods=['GET'])(get_training_stats_api)
-    # 活跃度接口
-    app.route('/api/data-manage/activity', methods=['GET'])(get_training_activity_api)
-    # 文件列表接口
-    app.route('/api/data-manage/files', methods=['GET'])(get_training_files_api)
-    # 删除接口
-    app.route('/api/data-manage/files', methods=['DELETE'])(delete_training_file_api)
-
-
-# 独立运行时的代码
-if __name__ == '__main__':
-    # 初始化表
-    init_table()
-    
-    app = Flask(__name__)
-    register_routes(app)
-    
-    print("=" * 60)
-    print("数据管理 API 服务")
-    print("=" * 60)
-    print("\n可用接口:")
-    print("  GET  /api/data-manage/stats     - 获取统计数据")
-    print("  GET  /api/data-manage/activity  - 获取活跃度")
-    print("  GET  /api/data-manage/files     - 获取文件列表")
-    print("  DELETE /api/data-manage/files   - 删除文件记录")
-    print("\n" + "=" * 60)
-    app.run(host='0.0.0.0', port=5004, debug=True)
