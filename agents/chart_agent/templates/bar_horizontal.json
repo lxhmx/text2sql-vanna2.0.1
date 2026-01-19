@@ -9,7 +9,10 @@
       }
     },
     "grid": {
-      "left": "20%"
+      "left": 80,
+      "right": 20,
+      "top": 20,
+      "bottom": 30
     },
     "xAxis": {
       "type": "value"
@@ -17,7 +20,11 @@
     "yAxis": {
       "type": "category",
       "data": [],
-      "inverse": true
+      "inverse": true,
+      "axisLabel": {
+        "width": 60,
+        "overflow": "truncate"
+      }
     },
     "series": [
       {
@@ -25,7 +32,23 @@
         "type": "bar",
         "data": [],
         "itemStyle": {
-          "color": "#91cc75"
+          "color": {
+            "type": "linear",
+            "x": 0,
+            "y": 0,
+            "x2": 1,
+            "y2": 0,
+            "colorStops": [
+              { "offset": 0, "color": "#00d4ff" },
+              { "offset": 1, "color": "#a855f7" }
+            ]
+          },
+          "borderRadius": [0, 4, 4, 0]
+        },
+        "label": {
+          "show": true,
+          "position": "right",
+          "fontSize": 11
         }
       }
     ]

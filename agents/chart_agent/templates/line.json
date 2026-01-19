@@ -5,10 +5,19 @@
     "tooltip": {
       "trigger": "axis"
     },
+    "grid": {
+      "left": 50,
+      "right": 20,
+      "top": 20,
+      "bottom": 40
+    },
     "xAxis": {
       "type": "category",
       "boundaryGap": false,
-      "data": []
+      "data": [],
+      "axisLabel": {
+        "rotate": 30
+      }
     },
     "yAxis": {
       "type": "value"
@@ -19,9 +28,28 @@
         "type": "line",
         "smooth": true,
         "data": [],
+        "itemStyle": {
+          "color": "#5b8def"
+        },
+        "lineStyle": {
+          "width": 2,
+          "color": "#5b8def"
+        },
         "areaStyle": {
-          "opacity": 0.3
-        }
+          "color": {
+            "type": "linear",
+            "x": 0,
+            "y": 0,
+            "x2": 0,
+            "y2": 1,
+            "colorStops": [
+              { "offset": 0, "color": "rgba(91, 141, 239, 0.4)" },
+              { "offset": 1, "color": "rgba(91, 141, 239, 0.05)" }
+            ]
+          }
+        },
+        "symbol": "circle",
+        "symbolSize": 6
       }
     ]
   }

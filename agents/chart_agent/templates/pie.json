@@ -4,19 +4,30 @@
   "option": {
     "tooltip": {
       "trigger": "item",
-      "formatter": "{a} <br/>{b}: {c} ({d}%)"
+      "formatter": "{b}: {c} ({d}%)"
     },
     "legend": {
       "orient": "vertical",
-      "left": "left",
-      "data": []
+      "right": 10,
+      "top": "center",
+      "type": "scroll"
     },
     "series": [
       {
         "name": "",
         "type": "pie",
-        "radius": "50%",
+        "radius": ["35%", "55%"],
+        "center": ["35%", "50%"],
+        "avoidLabelOverlap": true,
         "data": [],
+        "label": {
+          "show": true,
+          "formatter": "{b}\n{d}%",
+          "fontSize": 11
+        },
+        "labelLine": {
+          "show": true
+        },
         "emphasis": {
           "itemStyle": {
             "shadowBlur": 10,
@@ -25,6 +36,7 @@
           }
         }
       }
-    ]
+    ],
+    "color": ["#5b8def", "#a855f7", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
   }
 }

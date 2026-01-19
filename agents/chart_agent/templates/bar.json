@@ -8,6 +8,12 @@
         "type": "shadow"
       }
     },
+    "grid": {
+      "left": 50,
+      "right": 20,
+      "top": 20,
+      "bottom": 40
+    },
     "xAxis": {
       "type": "category",
       "data": [],
@@ -24,7 +30,23 @@
         "type": "bar",
         "data": [],
         "itemStyle": {
-          "color": "#5470c6"
+          "color": {
+            "type": "linear",
+            "x": 0,
+            "y": 0,
+            "x2": 0,
+            "y2": 1,
+            "colorStops": [
+              { "offset": 0, "color": "#5b8def" },
+              { "offset": 1, "color": "#00d4ff" }
+            ]
+          },
+          "borderRadius": [4, 4, 0, 0]
+        },
+        "label": {
+          "show": true,
+          "position": "top",
+          "fontSize": 11
         }
       }
     ]

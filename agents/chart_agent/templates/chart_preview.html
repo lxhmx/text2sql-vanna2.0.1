@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart模版预览</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 40px 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            font-size: 28px;
+        }
+        .charts-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .chart-card h2 {
+            color: #555;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .chart {
+            width: 100%;
+            height: 350px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chart模版预览</h1>
+    <div class="charts-container">
+        <div class="chart-card">
+            <h2>柱状图 (bar)</h2>
+            <div id="bar-chart" class="chart"></div>
+        </div>
+        <div class="chart-card">
+            <h2>横向柱状图 (bar_horizontal)</h2>
+            <div id="bar-horizontal-chart" class="chart"></div>
+        </div>
+        <div class="chart-card">
+            <h2>折线图 (line)</h2>
+            <div id="line-chart" class="chart"></div>
+        </div>
+        <div class="chart-card">
+            <h2>饼图 (pie)</h2>
+            <div id="pie-chart" class="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        // 柱状图
+        const barOption = {
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "shadow"
+                }
+            },
+            grid: {
+                left: 50,
+                right: 20,
+                top: 20,
+                bottom: 40
+            },
+            xAxis: {
+                type: "category",
+                data: ["一月", "二月", "三月", "四月", "五月", "六月"],
+                axisLabel: {
+                    rotate: 30
+                }
+            },
+            yAxis: {
+                type: "value"
+            },
+            series: [
+                {
+                    name: "销售额",
+                    type: "bar",
+                    data: [320, 450, 380, 520, 480, 610],
+                    itemStyle: {
+                        color: {
+                            type: "linear",
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [
+                                { offset: 0, color: "#5b8def" },
+                                { offset: 1, color: "#00d4ff" }
+                            ]
+                        },
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    label: {
+                        show: true,
+                        position: "top",
+                        fontSize: 11
+                    }
+                }
+            ]
+        };
+
+        // 横向柱状图
+        const barHorizontalOption = {
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "shadow"
+                }
+            },
+            grid: {
+                left: 80,
+                right: 20,
+                top: 20,
+                bottom: 30
+            },
+            xAxis: {
+                type: "value"
+            },
+            yAxis: {
+                type: "category",
+                data: ["产品A", "产品B", "产品C", "产品D", "产品E", "产品F"],
+                inverse: true,
+                axisLabel: {
+                    width: 60,
+                    overflow: "truncate"
+                }
+            },
+            series: [
+                {
+                    name: "销量",
+                    type: "bar",
+                    data: [890, 750, 680, 540, 420, 310],
+                    itemStyle: {
+                        color: {
+                            type: "linear",
+                            x: 0,
+                            y: 0,
+                            x2: 1,
+                            y2: 0,
+                            colorStops: [
+                                { offset: 0, color: "#00d4ff" },
+                                { offset: 1, color: "#a855f7" }
+                            ]
+                        },
+                        borderRadius: [0, 4, 4, 0]
+                    },
+                    label: {
+                        show: true,
+                        position: "right",
+                        fontSize: 11
+                    }
+                }
+            ]
+        };
+
+        // 折线图
+        const lineOption = {
+            tooltip: {
+                trigger: "axis"
+            },
+            grid: {
+                left: 50,
+                right: 20,
+                top: 20,
+                bottom: 40
+            },
+            xAxis: {
+                type: "category",
+                boundaryGap: false,
+                data: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+                axisLabel: {
+                    rotate: 30
+                }
+            },
+            yAxis: {
+                type: "value"
+            },
+            series: [
+                {
+                    name: "访问量",
+                    type: "line",
+                    smooth: true,
+                    data: [820, 932, 901, 934, 1290, 1330, 1320],
+                    itemStyle: {
+                        color: "#5b8def"
+                    },
+                    lineStyle: {
+                        width: 2,
+                        color: "#5b8def"
+                    },
+                    areaStyle: {
+                        color: {
+                            type: "linear",
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [
+                                { offset: 0, color: "rgba(91, 141, 239, 0.4)" },
+                                { offset: 1, color: "rgba(91, 141, 239, 0.05)" }
+                            ]
+                        }
+                    },
+                    symbol: "circle",
+                    symbolSize: 6
+                }
+            ]
+        };
+
+        // 饼图
+        const pieOption = {
+            tooltip: {
+                trigger: "item",
+                formatter: "{b}: {c} ({d}%)"
+            },
+            legend: {
+                orient: "vertical",
+                right: 10,
+                top: "center",
+                type: "scroll"
+            },
+            series: [
+                {
+                    name: "用户分布",
+                    type: "pie",
+                    radius: ["35%", "55%"],
+                    center: ["35%", "50%"],
+                    avoidLabelOverlap: true,
+                    data: [
+                        { value: 1048, name: "华东" },
+                        { value: 735, name: "华南" },
+                        { value: 580, name: "华北" },
+                        { value: 484, name: "西南" },
+                        { value: 300, name: "西北" }
+                    ],
+                    label: {
+                        show: true,
+                        formatter: "{b}\n{d}%",
+                        fontSize: 11
+                    },
+                    labelLine: {
+                        show: true
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: "rgba(0, 0, 0, 0.5)"
+                        }
+                    }
+                }
+            ],
+            color: ["#5b8def", "#a855f7", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
+        };
+
+        // 初始化图表
+        const barChart = echarts.init(document.getElementById('bar-chart'));
+        const barHorizontalChart = echarts.init(document.getElementById('bar-horizontal-chart'));
+        const lineChart = echarts.init(document.getElementById('line-chart'));
+        const pieChart = echarts.init(document.getElementById('pie-chart'));
+
+        barChart.setOption(barOption);
+        barHorizontalChart.setOption(barHorizontalOption);
+        lineChart.setOption(lineOption);
+        pieChart.setOption(pieOption);
+
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            barChart.resize();
+            barHorizontalChart.resize();
+            lineChart.resize();
+            pieChart.resize();
+        });
+    </script>
+</body>
+</html>

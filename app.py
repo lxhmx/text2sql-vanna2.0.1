@@ -42,9 +42,6 @@ from api.financial.work_time_api import router as work_time_router
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时初始化
-    from api.data_manage_api import init_table
-    init_table()
-    
     logger.info("=" * 60)
     logger.info("Vanna Text2SQL API 服务 (FastAPI)")
     logger.info("流程图功能: XML 生成 + 图片导出模式")
