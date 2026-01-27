@@ -95,26 +95,4 @@ async def health():
 # ==================== 启动入口 ====================
 
 if __name__ == '__main__':
-    print("\n可用接口:")
-    print("  训练接口:")
-    print("    POST /api/train-sql         - 训练 SQL 文件")
-    print("    POST /api/train-document    - 训练文档文件")
-    print("    POST /api/train-manual      - 手动输入训练")
-    print("    POST /api/upload            - 上传训练文件")
-    print("\n  数据管理接口:")
-    print("    GET  /api/data-manage/stats    - 获取统计数据")
-    print("    GET  /api/data-manage/activity - 获取活跃度")
-    print("    GET  /api/data-manage/files    - 获取文件列表")
-    print("    DELETE /api/data-manage/files  - 删除文件记录")
-    print("\n  查询接口:")
-    print("    POST /api/query             - 自然语言查询")
-    print("    POST /api/query-stream      - 流式查询")
-    print("    POST /api/query-agent       - Agent 模式查询（真正流式）")
-    print("\n  智能体接口（新）:")
-    print("    POST /api/agent/chat        - 智能体对话（支持自动路由）")
-    print("    GET  /api/agent/list        - 列出所有智能体")
-    print("\n  其他:")
-    print("    GET  /api/health            - 健康检查")
-    print("\n" + "=" * 60)
-    
     uvicorn.run(app, host='0.0.0.0', port=5000)
