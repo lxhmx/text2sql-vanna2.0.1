@@ -5,7 +5,7 @@
 
 set -e
 
-PROJECT_DIR="/opt/app/text2sql"
+PROJECT_DIR="/opt/app"
 FRONTEND_DIR="$PROJECT_DIR/font-vue"
 
 # 颜色输出
@@ -34,36 +34,28 @@ pull_code() {
     log_info "代码更新完成"
 }
 
-# 更新后端
+# 更新后端 (Docker 部署)
 deploy_backend() {
     log_info "开始更新后端..."
     
     cd $PROJECT_DIR
     
-    # 安装新依赖（如果有）
-    log_info "检查 Python 依赖..."
-    ./venv/bin/pip install -r requirements.txt --quiet
+    # 重新构建并启动后端容器
+    log_info "重新构建 Docker 镜像..."
+    docker compose build backend
     
-    # 检查 Playwright 浏览器是否已安装
-    if ! ls $HOME/.cache/ms-playwright/chromium-* 1>/dev/null 2>&1; then
-        log_info "安装 Playwright 浏览器..."
-        ./venv/bin/playwright install chromium
-        ./venv/bin/playwright install-deps chromium 2>/dev/null || log_warn "系统依赖可能需要手动安装: playwright install-deps chromium"
-    fi
+    log_info "重启后端容器..."
+    docker compose up -d backend
     
-    # 重启后端服务
-    log_info "重启后端服务..."
-    systemctl restart text2sql
+    # 等待容器启动
+    sleep 3
     
-    # 等待服务启动
-    sleep 2
-    
-    # 检查服务状态
-    if systemctl is-active --quiet text2sql; then
+    # 检查容器状态
+    if docker compose ps backend | grep -q "Up"; then
         log_info "后端服务启动成功 ✓"
     else
         log_error "后端服务启动失败！"
-        journalctl -u text2sql -n 20 --no-pager
+        docker compose logs --tail=20 backend
         exit 1
     fi
 }
