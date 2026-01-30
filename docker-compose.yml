@@ -41,22 +41,8 @@ services:
       - /opt/video:/opt/video
     depends_on:
       - neo4j
-    networks:
-      - vanna-network
-    # 后端不直接暴露端口，通过 nginx 代理
-
-  frontend:
-    build:
-      context: ./font-vue
-      dockerfile: Dockerfile
-    container_name: vanna-frontend
-    restart: unless-stopped
     ports:
-      - "80:80"  # 对外暴露 80 端口
-    volumes:
-      - /opt/video:/opt/video:ro
-    depends_on:
-      - backend
+      - "5000:5000"  # 暴露后端 API 端口
     networks:
       - vanna-network
 

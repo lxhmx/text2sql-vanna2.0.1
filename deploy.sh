@@ -82,9 +82,14 @@ deploy_frontend() {
     log_info "构建前端..."
     npm run build
     
-    # 重启 Nginx
-    log_info "重启 Nginx..."
-    systemctl restart nginx
+    # 部署到 nginx 目录
+    log_info "部署前端文件到 /usr/share/nginx/html/vanna..."
+    rm -rf /usr/share/nginx/html/vanna
+    cp -r dist /usr/share/nginx/html/vanna
+    
+    # 重新加载 Nginx 配置
+    log_info "重新加载 Nginx..."
+    systemctl reload nginx
     
     if systemctl is-active --quiet nginx; then
         log_info "前端部署成功 ✓"
